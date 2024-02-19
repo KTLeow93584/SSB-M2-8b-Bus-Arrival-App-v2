@@ -9,8 +9,21 @@ import Table from 'react-bootstrap/Table';
 
 import { useState, useEffect } from 'react';
 
-function BusServiceList({ id, services }) {
+function BusServiceList({ id, services, onBusServiceRetrievedCallback = null }) {
   const msPerMinute = 60000;
+
+  // Fetch bus arrival data on-the-fly as the user types in the bus stop ID.
+  useEffect(() => {
+    // Refresh Bus Info every 5 seconds. 1 second = 1000 milliseconds.
+    const timerId = setInterval(() => {
+      // Debug
+      console.log("[On Timer Refresh] Fetching Bus Data.");
+
+      onFetchBusData(id, onBusServiceRetrievedCallback);
+    }, 5000);
+
+    return (() => clearInterval(timerId));
+  });
 
   return (
     <>
@@ -74,6 +87,43 @@ function BusServiceList({ id, services }) {
   );
 }
 
+async function onFetchBusData(busStopId, onBusServiceRetrievedCallback = null) {
+  if (!busStopId) {
+    // Debug
+    console.log("[On Fetch Bus Data from API] Empty Bus Stop ID, early exit called.");
+    return;
+  }
+
+  const response = await fetch(`https://arrivelah2.busrouter.sg/?id=${busStopId}`);
+  const data = await response.json();
+
+  try {
+    // Debug
+    //console.log("Data.", data);
+
+    if (data.services === null || data.services === undefined)
+      throw new Error("Invalid Bus Stop ID");
+    else if (data.services.length === 0)
+      throw new Error("Zero Bus Service Active");
+
+    data.services = data.services.sort((service1, service2) => service1.no - service2.no);
+
+    if (onBusServiceRetrievedCallback !== null)
+      onBusServiceRetrievedCallback(data.services)
+    // Debug
+    console.log("[On Fetch Bus Data from API] Fetch Success.");
+  }
+  catch (error) {
+    console.log("[On Fetch Bus Data from API] Fetch Failed. Error: ", error);
+  }
+}
+
+function formatDateToReadableText(date) {
+  return date.getDate().toString().padStart(2, "0") + "/" + date.getMonth().toString().padStart(2, "0") +
+    "/" + date.getFullYear() + "/" + date.getHours().toString().padStart(2, "0") + ":" + date.getMinutes().toString().padStart(2, "0") + ":" +
+    date.getSeconds().toString().padStart(2, "0");
+}
+
 function formatDateToTime(date) {
   const hours = date.getHours().toString().padStart(2, "0");
   const minutes = date.getMinutes().toString().padStart(2, "0");
@@ -106,12 +156,6 @@ function RenderEmptyBusStopIdInput() {
   );
 }
 
-function formatDate(date) {
-  return date.getDate().toString().padStart(2, "0") + "/" + date.getMonth().toString().padStart(2, "0") +
-    "/" + date.getFullYear() + "/" + date.getHours().toString().padStart(2, "0") + ":" + date.getMinutes().toString().padStart(2, "0") + ":" +
-    date.getSeconds().toString().padStart(2, "0");
-}
-
 function App() {
   const [busStopId, setBusStopId] = useState('');
   const [busServices, setBusServices] = useState(null);
@@ -124,53 +168,10 @@ function App() {
 
   // Fetch bus arrival data on-the-fly as the user types in the bus stop ID.
   useEffect(() => {
-    const fetchBusArrivalData = async () => {
-      if (!busStopId) {
-        // Debug
-        console.log("[On Fetch Bus Data from API] Empty Bus Stop ID, early exit called.");
-        return;
-      }
-
-      const response = await fetch(`https://arrivelah2.busrouter.sg/?id=${busStopId}`);
-      const data = await response.json();
-
-      try {
-        // Debug
-        //console.log("Data.", data);
-
-        if (data.services === null || data.services === undefined)
-          throw new Error("Invalid Bus Stop ID");
-        else if (data.services.length === 0)
-          throw new Error("Zero Bus Service Active");
-
-        data.services = data.services.sort((service1, service2) => service1.no - service2.no);
-        setBusServices(data.services)
-        // Debug
-        console.log("[On Fetch Bus Data from API] Fetch Success.");
-      }
-      catch (error) {
-        console.log("[On Fetch Bus Data from API] Fetch Failed. Error: ", error);
-      }
-
+    onFetchBusData(busStopId, setBusServices).then(() => {
       setLoading(false);
       setLastUpdatedDate(new Date());
-    };
-
-    setBusServices(null);
-
-    // Debug
-    console.log("[On Timer Init] Fetching Bus Data.");
-    fetchBusArrivalData();
-
-    // Refresh Bus Info every 5 seconds. 1 second = 1000 milliseconds.
-    const timerId = setInterval(() => {
-      // Debug
-      console.log("[On Timer Refresh] Fetching Bus Data.");
-
-      fetchBusArrivalData();
-    }, 5000);
-
-    return (() => clearInterval(timerId));
+    });
   }, [busStopId]);
 
   return (
@@ -195,13 +196,14 @@ function App() {
         busStopId.trim().length > 0 ? (
           <Row>
             <Col className="col-12 d-flex flex-column align-items-center mt-3">
-              <p className="fs-6 text-center text-danger my-0 py-0">Last Updated at: {formatDate(lastUpdatedDate)}</p>
+              <p className="fs-6 text-center text-danger my-0 py-0">Last Updated at: {formatDateToReadableText(lastUpdatedDate)}</p>
             </Col>
           </Row>
         ) : null
       }
       {
-        busServices ? <BusServiceList id={busStopId} services={busServices} /> :
+        (busServices && busStopId.trim().length > 0) ?
+          <BusServiceList id={busStopId} services={busServices} onBusServiceRetrievedCallback={setBusServices} /> :
           (busStopId.trim().length > 0 ? RenderInvalidBusStopId() : RenderEmptyBusStopIdInput())
       }
     </Container>
