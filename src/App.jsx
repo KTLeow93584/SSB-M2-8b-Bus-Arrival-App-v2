@@ -87,7 +87,7 @@ function BusServiceList({ id, services, onBusServiceRetrievedCallback = null }) 
   );
 }
 
-async function onFetchBusData(busStopId, onBusServiceRetrievedCallback = null) {
+async function onFetchBusData(busStopId, setBusServicesCallback = null) {
   if (!busStopId) {
     // Debug
     console.log("[On Fetch Bus Data from API] Empty Bus Stop ID, early exit called.");
@@ -108,12 +108,17 @@ async function onFetchBusData(busStopId, onBusServiceRetrievedCallback = null) {
 
     data.services = data.services.sort((service1, service2) => service1.no - service2.no);
 
-    if (onBusServiceRetrievedCallback !== null)
-      onBusServiceRetrievedCallback(data.services)
+    if (setBusServicesCallback !== null)
+      setBusServicesCallback(data.services);
+
     // Debug
     console.log("[On Fetch Bus Data from API] Fetch Success.");
   }
   catch (error) {
+    if (setBusServicesCallback !== null)
+      setBusServicesCallback(null);
+
+    // Debug
     console.log("[On Fetch Bus Data from API] Fetch Failed. Error: ", error);
   }
 }
