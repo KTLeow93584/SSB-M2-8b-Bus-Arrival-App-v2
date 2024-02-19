@@ -9,7 +9,7 @@ import Table from 'react-bootstrap/Table';
 
 import { useState, useEffect } from 'react';
 
-function BusServiceList({ id, services, onBusServiceRetrievedCallback = null }) {
+function BusServiceList({ id, services, onBusServiceRetrievedCallback = null, setLastUpdatedDate = null }) {
   const msPerMinute = 60000;
 
   // Fetch bus arrival data on-the-fly as the user types in the bus stop ID.
@@ -19,7 +19,10 @@ function BusServiceList({ id, services, onBusServiceRetrievedCallback = null }) 
       // Debug
       console.log("[On Timer Refresh] Fetching Bus Data.");
 
-      onFetchBusData(id, onBusServiceRetrievedCallback);
+      onFetchBusData(id, onBusServiceRetrievedCallback).then(() => {
+        if (setLastUpdatedDate !== null)
+          setLastUpdatedDate(new Date());
+      });
     }, 5000);
 
     return (() => clearInterval(timerId));
@@ -208,7 +211,7 @@ function App() {
       }
       {
         (busServices && busStopId.trim().length > 0) ?
-          <BusServiceList id={busStopId} services={busServices} onBusServiceRetrievedCallback={setBusServices} /> :
+          <BusServiceList id={busStopId} services={busServices} onBusServiceRetrievedCallback={setBusServices} setLastUpdatedDate={setLastUpdatedDate} /> :
           (busStopId.trim().length > 0 ? RenderInvalidBusStopId() : RenderEmptyBusStopIdInput())
       }
     </Container>
