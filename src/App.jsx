@@ -14,7 +14,7 @@ function BusServiceList({ id, services }) {
 
   return (
     <>
-      <Row className="mt-3">
+      <Row className="mt-1">
         <Col className="col-12 d-flex flex-column align-items-center mt-3">
           <h2 className="fs-4 fw-bold">Bus Stop [{id}]</h2>
         </Col>
@@ -106,10 +106,17 @@ function RenderEmptyBusStopIdInput() {
   );
 }
 
+function formatDate(date) {
+  return date.getDate().toString().padStart(2, "0") + "/" + date.getMonth().toString().padStart(2, "0") +
+    "/" + date.getFullYear() + "/" + date.getHours().toString().padStart(2, "0") + ":" + date.getMinutes().toString().padStart(2, "0") + ":" +
+    date.getSeconds().toString().padStart(2, "0");
+}
+
 function App() {
   const [busStopId, setBusStopId] = useState('');
   const [busServices, setBusServices] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [lastUpdatedDate, setLastUpdatedDate] = useState(new Date());
 
   function handleInputChange(event) {
     setBusStopId(event.target.value)
@@ -145,7 +152,8 @@ function App() {
         console.log("[On Fetch Bus Data from API] Fetch Failed. Error: ", error);
       }
 
-      setLoading(false)
+      setLoading(false);
+      setLastUpdatedDate(new Date());
     };
 
     setBusServices(null);
@@ -183,6 +191,15 @@ function App() {
           {loading && <p>Loading...</p>}
         </Col>
       </Row>
+      {
+        busStopId.trim().length > 0 ? (
+          <Row>
+            <Col className="col-12 d-flex flex-column align-items-center mt-3">
+              <p className="fs-6 text-center text-danger my-0 py-0">Last Updated at: {formatDate(lastUpdatedDate)}</p>
+            </Col>
+          </Row>
+        ) : null
+      }
       {
         busServices ? <BusServiceList id={busStopId} services={busServices} /> :
           (busStopId.trim().length > 0 ? RenderInvalidBusStopId() : RenderEmptyBusStopIdInput())
